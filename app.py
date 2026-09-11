@@ -121,14 +121,10 @@ def voice_ui(question, qnum):
             <button onclick="spk_{cid}()" style="margin-left:auto;padding:6px 14px;background:#1D9E75;color:white;border:none;border-radius:6px;cursor:pointer;font-size:13px;">🔊 Listen Again</button>
         </div>
         <div style="text-align:center;padding:10px 0;">
-            <p id="st_{cid}" style="color:#8b949e;font-size:14px;margin:0 0 12px;">Click mic to speak (Hindi + English supported)</p>
-            <button id="mb_{cid}" onclick="tog_{cid}()" style="width:70px;height:70px;border-radius:50%;background:#2d333b;border:2px solid #1D9E75;cursor:pointer;font-size:30px;transition:all 0.3s;">🎤</button>
+            <p id="st_{cid}" style="color:#8b949e;font-size:14px;margin:0 0 12px;">Click mic → speak your answer → click mic again to submit automatically</p>
+            <button id="mb_{cid}" onclick="tog_{cid}()" style="width:80px;height:80px;border-radius:50%;background:#2d333b;border:3px solid #1D9E75;cursor:pointer;font-size:34px;transition:all 0.3s;">🎤</button>
         </div>
         <div id="trbox_{cid}" style="margin-top:14px;padding:14px;background:#0e1117;border-radius:8px;min-height:60px;color:#e6edf3;font-size:15px;text-align:left;display:none;line-height:1.6;">
-        </div>
-        <div id="btnrow_{cid}" style="margin-top:10px;text-align:right;display:none;">
-            <button onclick="cpy_{cid}()" id="cpybtn_{cid}" style="padding:8px 18px;background:#1D9E75;color:white;border:none;border-radius:6px;cursor:pointer;font-size:14px;font-weight:500;">📋 Copy Answer</button>
-            <button onclick="clr_{cid}()" style="padding:8px 18px;background:#2d333b;color:#8b949e;border:none;border-radius:6px;cursor:pointer;font-size:14px;margin-left:6px;">🗑 Clear</button>
         </div>
     </div>
     <script>
@@ -142,31 +138,27 @@ def voice_ui(question, qnum):
         }};
         setTimeout(()=>spk_{cid}(),500);
 
-        window.cpy_{cid}=function(){{
-            const text=document.getElementById('trbox_{cid}').innerText;
-            navigator.clipboard.writeText(text).then(()=>{{
-                const btn=document.getElementById('cpybtn_{cid}');
-                const orig=btn.innerHTML;
-                btn.innerHTML='✅ Copied! Paste in text box below';
-                btn.style.background='#12395B';
-                setTimeout(()=>{{btn.innerHTML=orig;btn.style.background='#1D9E75';}},2500);
-            }});
-        }};
-        window.clr_{cid}=function(){{
-            ft='';
-            document.getElementById('trbox_{cid}').innerHTML='';
-            document.getElementById('trbox_{cid}').style.display='none';
-            document.getElementById('btnrow_{cid}').style.display='none';
-        }};
-
         window.tog_{cid}=function(){{
             if(on){{
                 rc.stop();on=false;
                 document.getElementById('mb_{cid}').style.background='#2d333b';
                 document.getElementById('mb_{cid}').style.borderColor='#1D9E75';
-                document.getElementById('st_{cid}').textContent='✅ Done. Copy the text and paste in answer box below.';
+                document.getElementById('st_{cid}').textContent='✅ Submitting your answer...';
                 document.getElementById('st_{cid}').style.color='#1D9E75';
-                document.getElementById('btnrow_{cid}').style.display='block';
+
+                // Auto submit via URL query param (bulletproof method)
+                setTimeout(()=>{{
+                    if(ft.trim().length > 0){{
+                        const encoded = encodeURIComponent(ft.trim());
+                        const url = new URL(window.parent.location.href);
+                        url.searchParams.set('voice_answer', encoded);
+                        url.searchParams.set('vq', '{qnum}');
+                        window.parent.location.href = url.toString();
+                    }} else {{
+                        document.getElementById('st_{cid}').textContent='⚠️ No speech detected. Try again.';
+                        document.getElementById('st_{cid}').style.color='#e94560';
+                    }}
+                }},500);
             }}else{{
                 ft='';
                 try{{
@@ -185,16 +177,16 @@ def voice_ui(question, qnum):
                         bx.innerHTML='<span style="color:#e6edf3;">'+ft+'</span><span style="color:#484f58;font-style:italic;">'+im+'</span>';
                     }};
                     rc.onerror=function(e){{
-                        document.getElementById('st_{cid}').textContent='Error: '+e.error+' — try again or use text input';
+                        document.getElementById('st_{cid}').textContent='Error: '+e.error+' — try again or type below';
                         document.getElementById('st_{cid}').style.color='#e94560';
                     }};
                     rc.start();on=true;
                     document.getElementById('mb_{cid}').style.background='#e94560';
                     document.getElementById('mb_{cid}').style.borderColor='#e94560';
-                    document.getElementById('st_{cid}').textContent='🔴 Listening... speak now, click mic again to stop';
+                    document.getElementById('st_{cid}').textContent='🔴 Listening... speak now, click mic again when done';
                     document.getElementById('st_{cid}').style.color='#e94560';
                 }}catch(err){{
-                    document.getElementById('st_{cid}').textContent='Speech not supported. Use Chrome/Edge. Type below instead.';
+                    document.getElementById('st_{cid}').textContent='Speech not supported in this browser. Use Chrome/Edge or type below.';
                     document.getElementById('st_{cid}').style.color='#e94560';
                 }}
             }}
@@ -268,16 +260,33 @@ elif st.session_state.page=="interview":
             cq=qd["question"];ql="Follow up" if qd["type"]=="followup" else f"Question {(idx//2)+1}"
             st.markdown(f'<div class="ab">🤖 <strong>{ql}:</strong> {cq}</div>', unsafe_allow_html=True)
             if st.session_state.q_time is None: st.session_state.q_time=time.time()
-            st.components.v1.html(voice_ui(cq,idx),height=260)
-            ti=st.text_area("Your Answer",placeholder="✍️ Paste your speech here (from Copy button above) OR type your answer...",height=100,key=f"ti_{idx}",label_visibility="collapsed")
-            if st.button("📩 Submit Answer",use_container_width=True,type="primary",key=f"sub_{idx}"):
-                a=(ti or "").strip()
-                if a:
-                    el=round(time.time()-st.session_state.q_time,1) if st.session_state.q_time else 0
-                    with st.spinner("🧠 Evaluating..."): ev=eval_ans(cq,a)
-                    st.session_state.interactions.append({"question":cq,"answer":a,"score":ev["score"],"verdict":ev["verdict"],"feedback":ev["feedback"],"source":qd["source"],"type":qd["type"],"skill":qd.get("skill",""),"time_taken":el,"timestamp":datetime.now().isoformat()})
-                    st.session_state.q_time=None;st.rerun()
-                else: st.warning("Please speak or type your answer.")
+            st.components.v1.html(voice_ui(cq,idx),height=280)
+
+            # Check for auto-submit from voice (via URL query param)
+            qp = st.query_params
+            voice_ans = qp.get("voice_answer", "")
+            vq_num = qp.get("vq", "")
+            if voice_ans and vq_num == str(idx):
+                # Auto-submit voice answer
+                el=round(time.time()-st.session_state.q_time,1) if st.session_state.q_time else 0
+                with st.spinner("🧠 Evaluating your answer..."): ev=eval_ans(cq, voice_ans)
+                st.session_state.interactions.append({"question":cq,"answer":voice_ans,"score":ev["score"],"verdict":ev["verdict"],"feedback":ev["feedback"],"source":qd["source"],"type":qd["type"],"skill":qd.get("skill",""),"time_taken":el,"timestamp":datetime.now().isoformat()})
+                st.session_state.q_time=None
+                # Clear query params
+                st.query_params.clear()
+                st.rerun()
+
+            # Manual typing fallback
+            with st.expander("⌨️ Prefer typing instead?"):
+                ti=st.text_area("Type your answer",placeholder="Type your answer here...",height=100,key=f"ti_{idx}",label_visibility="collapsed")
+                if st.button("📩 Submit Typed Answer",use_container_width=True,key=f"sub_{idx}"):
+                    a=(ti or "").strip()
+                    if a:
+                        el=round(time.time()-st.session_state.q_time,1) if st.session_state.q_time else 0
+                        with st.spinner("🧠 Evaluating..."): ev=eval_ans(cq,a)
+                        st.session_state.interactions.append({"question":cq,"answer":a,"score":ev["score"],"verdict":ev["verdict"],"feedback":ev["feedback"],"source":qd["source"],"type":qd["type"],"skill":qd.get("skill",""),"time_taken":el,"timestamp":datetime.now().isoformat()})
+                        st.session_state.q_time=None;st.rerun()
+                    else: st.warning("Please type your answer.")
         else: st.session_state.complete=True;st.rerun()
     else:
         pr=st.session_state.profile;ints=st.session_state.interactions
