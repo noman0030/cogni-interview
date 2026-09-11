@@ -112,7 +112,7 @@ def gen_report(data):
 
 def voice_ui(question, qnum):
     cid=f"v{qnum}_{random.randint(1000,9999)}"
-    sq=question.replace("'","\\'").replace('"','\\"').replace('\n',' ')
+    sq=question.replace("'","\\'").replace('"','\\"').replace('\n',' ').replace('`','')
     return f"""
     <div style="background:#1c2333;border-radius:12px;padding:20px;margin:10px 0;border:1px solid #2d333b;">
         <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;">
@@ -121,27 +121,84 @@ def voice_ui(question, qnum):
             <button onclick="spk_{cid}()" style="margin-left:auto;padding:6px 14px;background:#1D9E75;color:white;border:none;border-radius:6px;cursor:pointer;font-size:13px;">🔊 Listen Again</button>
         </div>
         <div style="text-align:center;padding:10px 0;">
-            <p id="st_{cid}" style="color:#8b949e;font-size:14px;margin:0 0 12px;">Click mic to speak</p>
-            <button id="mb_{cid}" onclick="tog_{cid}()" style="width:64px;height:64px;border-radius:50%;background:#2d333b;border:2px solid #1D9E75;cursor:pointer;font-size:28px;transition:all 0.3s;">🎤</button>
-            <div id="tr_{cid}" style="margin-top:14px;padding:12px;background:#0e1117;border-radius:8px;min-height:40px;color:#e6edf3;font-size:14px;text-align:left;display:none;"></div>
+            <p id="st_{cid}" style="color:#8b949e;font-size:14px;margin:0 0 12px;">Click mic to speak (Hindi + English supported)</p>
+            <button id="mb_{cid}" onclick="tog_{cid}()" style="width:70px;height:70px;border-radius:50%;background:#2d333b;border:2px solid #1D9E75;cursor:pointer;font-size:30px;transition:all 0.3s;">🎤</button>
+        </div>
+        <div id="trbox_{cid}" style="margin-top:14px;padding:14px;background:#0e1117;border-radius:8px;min-height:60px;color:#e6edf3;font-size:15px;text-align:left;display:none;line-height:1.6;">
+        </div>
+        <div id="btnrow_{cid}" style="margin-top:10px;text-align:right;display:none;">
+            <button onclick="cpy_{cid}()" id="cpybtn_{cid}" style="padding:8px 18px;background:#1D9E75;color:white;border:none;border-radius:6px;cursor:pointer;font-size:14px;font-weight:500;">📋 Copy Answer</button>
+            <button onclick="clr_{cid}()" style="padding:8px 18px;background:#2d333b;color:#8b949e;border:none;border-radius:6px;cursor:pointer;font-size:14px;margin-left:6px;">🗑 Clear</button>
         </div>
     </div>
     <script>
-    (function(){{let rc=null,on=false,ft='';
-    window.spk_{cid}=function(){{const u=new SpeechSynthesisUtterance(`{sq}`);u.rate=0.95;u.lang='en-US';speechSynthesis.speak(u);}};
-    setTimeout(()=>spk_{cid}(),500);
-    window.tog_{cid}=function(){{
-        if(on){{rc.stop();on=false;document.getElementById('mb_{cid}').style.background='#2d333b';document.getElementById('mb_{cid}').style.borderColor='#1D9E75';
-            document.getElementById('st_{cid}').textContent='Done! Submit below.';document.getElementById('st_{cid}').style.color='#1D9E75';
-            setTimeout(()=>{{const areas=document.querySelectorAll('textarea');for(let a of areas){{if(a.placeholder&&a.placeholder.includes('Speech')){{
-                const ns=Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype,'value').set;ns.call(a,ft);a.dispatchEvent(new Event('input',{{bubbles:true}}));break;}}}}}},300);
-        }}else{{ft='';try{{rc=new(window.SpeechRecognition||window.webkitSpeechRecognition)();rc.continuous=true;rc.interimResults=true;rc.lang='en-IN';
-            rc.onresult=function(e){{let im='';ft='';for(let i=0;i<e.results.length;i++){{if(e.results[i].isFinal)ft+=e.results[i][0].transcript+' ';else im+=e.results[i][0].transcript;}}
-            const bx=document.getElementById('tr_{cid}');bx.style.display='block';bx.innerHTML='<span style="color:#1D9E75;">'+ft+'</span><span style="color:#484f58;">'+im+'</span>';}};
-            rc.start();on=true;document.getElementById('mb_{cid}').style.background='#e94560';document.getElementById('mb_{cid}').style.borderColor='#e94560';
-            document.getElementById('st_{cid}').textContent='🔴 Listening... click mic when done';document.getElementById('st_{cid}').style.color='#e94560';
-        }}catch(err){{document.getElementById('st_{cid}').textContent='Speech not supported. Use Chrome.';}}}}
-    }};
+    (function(){{
+        let rc=null,on=false,ft='';
+        window.spk_{cid}=function(){{
+            speechSynthesis.cancel();
+            const u=new SpeechSynthesisUtterance('{sq}');
+            u.rate=0.95;u.lang='en-US';
+            speechSynthesis.speak(u);
+        }};
+        setTimeout(()=>spk_{cid}(),500);
+
+        window.cpy_{cid}=function(){{
+            const text=document.getElementById('trbox_{cid}').innerText;
+            navigator.clipboard.writeText(text).then(()=>{{
+                const btn=document.getElementById('cpybtn_{cid}');
+                const orig=btn.innerHTML;
+                btn.innerHTML='✅ Copied! Paste in text box below';
+                btn.style.background='#12395B';
+                setTimeout(()=>{{btn.innerHTML=orig;btn.style.background='#1D9E75';}},2500);
+            }});
+        }};
+        window.clr_{cid}=function(){{
+            ft='';
+            document.getElementById('trbox_{cid}').innerHTML='';
+            document.getElementById('trbox_{cid}').style.display='none';
+            document.getElementById('btnrow_{cid}').style.display='none';
+        }};
+
+        window.tog_{cid}=function(){{
+            if(on){{
+                rc.stop();on=false;
+                document.getElementById('mb_{cid}').style.background='#2d333b';
+                document.getElementById('mb_{cid}').style.borderColor='#1D9E75';
+                document.getElementById('st_{cid}').textContent='✅ Done. Copy the text and paste in answer box below.';
+                document.getElementById('st_{cid}').style.color='#1D9E75';
+                document.getElementById('btnrow_{cid}').style.display='block';
+            }}else{{
+                ft='';
+                try{{
+                    rc=new(window.SpeechRecognition||window.webkitSpeechRecognition)();
+                    rc.continuous=true;
+                    rc.interimResults=true;
+                    rc.lang='en-IN';
+                    rc.onresult=function(e){{
+                        let im='';ft='';
+                        for(let i=0;i<e.results.length;i++){{
+                            if(e.results[i].isFinal)ft+=e.results[i][0].transcript+' ';
+                            else im+=e.results[i][0].transcript;
+                        }}
+                        const bx=document.getElementById('trbox_{cid}');
+                        bx.style.display='block';
+                        bx.innerHTML='<span style="color:#e6edf3;">'+ft+'</span><span style="color:#484f58;font-style:italic;">'+im+'</span>';
+                    }};
+                    rc.onerror=function(e){{
+                        document.getElementById('st_{cid}').textContent='Error: '+e.error+' — try again or use text input';
+                        document.getElementById('st_{cid}').style.color='#e94560';
+                    }};
+                    rc.start();on=true;
+                    document.getElementById('mb_{cid}').style.background='#e94560';
+                    document.getElementById('mb_{cid}').style.borderColor='#e94560';
+                    document.getElementById('st_{cid}').textContent='🔴 Listening... speak now, click mic again to stop';
+                    document.getElementById('st_{cid}').style.color='#e94560';
+                }}catch(err){{
+                    document.getElementById('st_{cid}').textContent='Speech not supported. Use Chrome/Edge. Type below instead.';
+                    document.getElementById('st_{cid}').style.color='#e94560';
+                }}
+            }}
+        }};
     }})();
     </script>"""
 
@@ -212,11 +269,9 @@ elif st.session_state.page=="interview":
             st.markdown(f'<div class="ab">🤖 <strong>{ql}:</strong> {cq}</div>', unsafe_allow_html=True)
             if st.session_state.q_time is None: st.session_state.q_time=time.time()
             st.components.v1.html(voice_ui(cq,idx),height=260)
-            cv,ct=st.columns([3,1])
-            with cv: vi=st.text_area("Speech area",placeholder="Speech will appear here...",label_visibility="collapsed",height=70,key=f"vi_{idx}")
-            with ct: ti=st.text_area("Type area",placeholder="Or type...",height=70,key=f"ti_{idx}",label_visibility="collapsed")
+            ti=st.text_area("Your Answer",placeholder="✍️ Paste your speech here (from Copy button above) OR type your answer...",height=100,key=f"ti_{idx}",label_visibility="collapsed")
             if st.button("📩 Submit Answer",use_container_width=True,type="primary",key=f"sub_{idx}"):
-                a=(vi or "").strip() or (ti or "").strip()
+                a=(ti or "").strip()
                 if a:
                     el=round(time.time()-st.session_state.q_time,1) if st.session_state.q_time else 0
                     with st.spinner("🧠 Evaluating..."): ev=eval_ans(cq,a)
